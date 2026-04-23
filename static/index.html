@@ -313,6 +313,7 @@ function renderProjectList(projects) {
     return `<div class="sidebar-item ${active}" onclick="loadProject('${p.id}')">
       <span class="item-name">${escapeHtml(p.name)}</span>
       <span class="item-status ${statusClass}">${statusText}</span>
+      <span style="font-size:12px;color:var(--danger);cursor:pointer;padding:2px 4px;border-radius:4px;" onclick="event.stopPropagation();deleteProject('${p.id}')">🗑</span>
     </div>`;
   }).join('');
 }
