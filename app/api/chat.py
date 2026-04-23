@@ -2,9 +2,10 @@
 import asyncio
 import json
 import httpx
+import re
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -19,7 +20,7 @@ OLLAMA_MODEL = "qwen2.5-coder:7b"
 
 
 class ChatBody(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=2000)
     project_id: str = ""
 
 
@@ -31,8 +32,18 @@ def _get_user_from_token(token: str, db: Session):
         return None
 
 
+def _sanitize_text(text: str) -> str:
+    if not text:
+        return text
+    return re.sub(r'<[^>]+>', '', text)
+
+
 @router.post("/chat")
 async def chat_message(body: ChatBody, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    text = _sanitize_text(body.text)
+    if not text or not text.strip():
+        return {"error": "需求描述不能为空"}
+    
     pid = body.project_id
     if not pid:
         # 免费版项目数量限制
@@ -42,16 +53,16 @@ async def chat_message(body: ChatBody, user: User = Depends(get_current_user), d
             project_count = db.query(Project).filter(Project.team_id == user.team_id).count()
             if project_count >= 3:
                 return {"error": "免费版最多创建 3 个项目，请升级套餐"}
-        p = Project(team_id=user.team_id, user_id=user.id, name=body.text[:30], description=body.text)
+        p = Project(team_id=user.team_id, user_id=user.id, name=text[:30], description=text)
         db.add(p)
         db.commit()
         db.refresh(p)
         pid = p.id
 
-    chat = Chat(project_id=pid, role="user", content=body.text)
+    chat = Chat(project_id=pid, role="user", content=text)
     db.add(chat)
     db.commit()
-    return {"project_id": pid, "text": body.text}
+    return {"project_id": pid, "text": text}
 
 
 @router.get("/stream")

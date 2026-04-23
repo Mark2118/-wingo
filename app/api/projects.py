@@ -1,13 +1,38 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
-from fastapi import APIRouter, Depends
+import re
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 from app.database import get_db
 from app.api.auth import get_current_user
-from app.models.schemas import Project, Chat
+from app.models.schemas import Project, Chat, Team
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
+
+
+def _sanitize_text(text: str) -> str:
+    """清洗输入：去除 HTML 标签，防止 XSS"""
+    if not text:
+        return text
+    # 去除 HTML 标签
+    cleaned = re.sub(r'<[^>]+>', '', text)
+    return cleaned
+
+
+class CreateProjectBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+
+
+def _check_project_limit(team_id: int, db: Session):
+    """检查免费版项目数量限制"""
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if team and team.plan == "trial":
+        count = db.query(Project).filter(Project.team_id == team_id).count()
+        if count >= 3:
+            raise HTTPException(status_code=403, detail="免费版最多创建 3 个项目，请升级套餐")
 
 
 @router.get("")
@@ -17,7 +42,10 @@ def list_projects(user=Depends(get_current_user), db: Session = Depends(get_db))
 
 
 @router.post("")
-def create_project_route(name: str, description: str = "", user=Depends(get_current_user), db: Session = Depends(get_db)):
+def create_project_route(body: CreateProjectBody, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    _check_project_limit(user.team_id, db)
+    name = _sanitize_text(body.name)
+    description = _sanitize_text(body.description)
     p = Project(team_id=user.team_id, user_id=user.id, name=name, description=description)
     db.add(p)
     db.commit()
