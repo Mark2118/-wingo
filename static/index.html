@@ -290,7 +290,60 @@ function logout() {
   localStorage.removeItem(TOKEN_KEY);
   location.href = '/login.html';
 }
+
+// --- Project List ---
+async function loadProjects() {
+  try {
+    const res = await fetch('/api/projects', {headers: authHeaders()});
+    if (!res.ok) return;
+    const data = await res.json();
+    renderProjectList(data.projects || []);
+  } catch (e) {}
+}
+function renderProjectList(projects) {
+  const list = document.getElementById('sidebarList');
+  const count = document.getElementById('projectCount');
+  if (count) count.textContent = projects.length + ' 个';
+  if (!list) return;
+  if (!projects.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;">暂无项目</div>'; return; }
+  list.innerHTML = projects.map(p => {
+    const statusClass = p.status === 'deployed' ? 'status-deployed' : p.status === 'running' ? 'status-running' : p.status === 'stopped' ? 'status-stopped' : 'status-created';
+    const statusText = p.status === 'deployed' ? '已完成' : p.status === 'running' ? '运行中' : p.status === 'stopped' ? '已停止' : '创建中';
+    const active = p.id === currentProject ? 'active' : '';
+    return `<div class="sidebar-item ${active}" onclick="loadProject('${p.id}')">
+      <span class="item-name">${escapeHtml(p.name)}</span>
+      <span class="item-status ${statusClass}">${statusText}</span>
+    </div>`;
+  }).join('');
+}
+async function loadProject(pid) {
+  currentProject = pid;
+  try {
+    const res = await fetch(`/api/projects/${pid}`, {headers: authHeaders()});
+    if (!res.ok) return;
+    const data = await res.json();
+    const p = data.project;
+    const chats = data.chats || [];
+    document.getElementById('projectName').textContent = p.name;
+    // Render chat history
+    const inner = document.getElementById('chatInner');
+    inner.innerHTML = '';
+    document.getElementById('welcome')?.remove();
+    for (const c of chats) {
+      appendMessage(c.role, c.content, false);
+    }
+    // Update sidebar highlight
+    renderProjectList([]); // Will reload on next loadProjects
+    loadProjects();
+    // Connect WS if running
+    if (p.status === 'running') connectWebSocket(pid);
+    // Update preview if deployed
+    if (p.status === 'deployed') { openPreview(); updatePreview(pid); }
+  } catch (e) {}
+}
+
 checkAuth();
+loadProjects();
 
 function setInput(text) {
   document.getElementById('userInput').value = text;
@@ -417,9 +470,10 @@ async function sendMessage() {
       body: JSON.stringify({text, project_id: currentProject})
     });
     const chatData = await chatRes.json();
-    if (chatData.error) { appendMessage('assistant', '❌ ' + chatData.error); return; }
+    if (chatData.error) { appendMessage('assistant', '❌ ' + chatData.error); removeTyping(); isStreaming = false; document.getElementById('sendBtn').disabled = false; return; }
     currentProject = chatData.project_id;
-    document.getElementById('projectName').textContent = chatData.text.slice(0, 20);
+    document.getElementById('projectName').textContent = text.slice(0, 20);
+    loadProjects();
 
     removeTyping();
 
