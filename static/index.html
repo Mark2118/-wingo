@@ -317,6 +317,17 @@ function renderProjectList(projects) {
     </div>`;
   }).join('');
 }
+async function deleteProject(pid) {
+  if (!confirm('确定删除这个项目吗？')) return;
+  try {
+    const res = await fetch(`/api/projects/${pid}`, {method: 'DELETE', headers: authHeaders()});
+    if (res.ok) {
+      if (currentProject === pid) newChat();
+      loadProjects();
+    }
+  } catch (e) {}
+}
+
 async function loadProject(pid) {
   currentProject = pid;
   try {
