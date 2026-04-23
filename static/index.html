@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WinGo V4</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0d0d0d;
+  --bg-panel: #141414;
+  --bg-input: #1a1a1a;
+  --bg-hover: #1f1f1f;
+  --bg-code: #1a1a1a;
+  --border: #262626;
+  --border-light: #333;
+  --text: #e5e5e5;
+  --text-secondary: #888;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+}
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* Header */
+.header {
+  height: 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { font-size: 18px; font-weight: 700; color: var(--text); }
+.project-name { font-size: 13px; color: var(--text-secondary); }
+.header-right { display: flex; gap: 8px; }
+.btn {
+  padding: 5px 12px; background: transparent; border: 1px solid var(--border-light);
+  color: var(--text-secondary); border-radius: 6px; font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { color: var(--text); border-color: var(--text-secondary); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+
+/* Main */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* Chat Area */
+.chat-area {
+  flex: 1; display: flex; flex-direction: column;
+  min-width: 0; transition: flex 0.25s ease;
+}
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 24px 16px 16px;
+  scroll-behavior: smooth;
+}
+.chat-inner { max-width: 768px; margin: 0 auto; width: 100%; }
+
+/* Welcome */
+.welcome { text-align: center; padding: 80px 20px 40px; }
+.welcome h1 { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+.welcome p { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+.welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.welcome-chip {
+  padding: 10px 18px; background: var(--bg-hover); border: 1px solid var(--border-light);
+  border-radius: 20px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
+  transition: all 0.15s;
+}
+.welcome-chip:hover { border-color: var(--text-secondary); color: var(--text); }
+
+/* Messages */
+.message { display: flex; gap: 12px; margin-bottom: 24px; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+.message-avatar {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; background: var(--bg-hover); border: 1px solid var(--border-light);
+}
+.message.user .message-avatar { background: var(--accent); border-color: var(--accent); }
+.message-content { flex: 1; min-width: 0; line-height: 1.7; }
+.message.user .message-content { color: var(--text); }
+.message.assistant .message-content { color: var(--text); }
+
+/* Typing */
+.typing { display: flex; gap: 4px; padding: 8px 0; }
+.typing span { width: 6px; height: 6px; background: var(--text-secondary); border-radius: 50%; animation: bounce 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce { 0%,80%,100% { transform: scale(0.8); opacity: 0.5; } 40% { transform: scale(1.2); opacity: 1; } }
+
+/* Markdown */
+.md-p { margin-bottom: 8px; }
+.md-h1, .md-h2, .md-h3 { font-weight: 600; margin: 16px 0 8px; }
+.md-h1 { font-size: 18px; }
+.md-h2 { font-size: 16px; }
+.md-h3 { font-size: 14px; }
+.md-ul, .md-ol { margin: 8px 0 8px 20px; }
+.md-li { margin-bottom: 4px; }
+.md-code { background: var(--bg-code); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+.md-pre { background: var(--bg-code); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 8px 0; }
+.md-pre code { background: none; padding: 0; font-size: 12px; }
+.md-blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-secondary); margin: 8px 0; }
+.md-hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+/* Status bar */
+.status-bar {
+  padding: 8px 16px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-secondary); display: flex; gap: 16px;
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+.status-dot.online { background: var(--success); }
+.status-dot.offline { background: var(--danger); }
+.status-dot.running { background: var(--warning); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* Input */
+.input-area {
+  padding: 12px 16px 16px; border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.input-box {
+  max-width: 768px; margin: 0 auto;
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--bg-input); border: 1px solid var(--border-light);
+  border-radius: 12px; padding: 10px 12px;
+}
+.input-box:focus-within { border-color: var(--accent); }
+.input-box textarea {
+  flex: 1; background: transparent; border: none; color: var(--text);
+  font-size: 14px; line-height: 1.5; resize: none; outline: none;
+  max-height: 120px; min-height: 20px; font-family: inherit;
+}
+.send-btn {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--accent);
+  border: none; color: #fff; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.send-btn:hover { background: var(--accent-hover); }
+.send-btn:disabled { background: var(--text-secondary); cursor: not-allowed; }
+.send-btn svg { width: 16px; height: 16px; }
+
+/* Preview Panel */
+.preview-panel {
+  width: 0; border-left: 1px solid var(--border); background: var(--bg-panel);
+  display: flex; flex-direction: column; overflow: hidden;
+  transition: width 0.25s ease; flex-shrink: 0;
+}
+.preview-panel.show { width: 45%; }
+.preview-header {
+  height: 40px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  font-size: 13px; font-weight: 600;
+}
+.preview-frame { flex: 1; border: none; background: #fff; width: 100%; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .preview-panel.show { width: 100%; position: fixed; top: 48px; bottom: 0; right: 0; z-index: 100; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <span class="logo">⚡ WinGo</span>
+      <span class="project-name" id="projectName"></span>
+    </div>
+    <div class="header-right">
+      <button class="btn" onclick="togglePreview()" id="previewBtn">👁 预览</button>
+      <button class="btn" onclick="newChat()">🗑 新建</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="chat-area" id="chatArea">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-inner" id="chatInner">
+          <div class="welcome" id="welcome">
+            <h1>WinGo V4</h1>
+            <p>描述你的需求，AI 自动完成开发部署</p>
+            <div class="welcome-chips">
+              <div class="welcome-chip" onclick="setInput('做一个餐饮利润分析后台')">餐饮利润分析后台</div>
+              <div class="welcome-chip" onclick="setInput('生成一个会员管理系统')">会员管理系统</div>
+              <div class="welcome-chip" onclick="setInput('写一个公司官网')">公司官网</div>
+              <div class="welcome-chip" onclick="setInput('做一个待办事项应用')">待办事项应用</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="status-bar" id="statusBar" style="display:none;">
+        <span><span class="status-dot running" id="statusDot"></span><span id="statusText">准备中...</span></span>
+        <span id="statusStage"></span>
+      </div>
+      <div class="input-area">
+        <div class="input-box">
+          <textarea id="userInput" rows="1" placeholder="描述你想做的项目..." onkeydown="handleKeydown(event)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-panel" id="previewPanel">
+      <div class="preview-header">
+        <span>📱 实时预览</span>
+        <button class="btn" onclick="togglePreview()">✕</button>
+      </div>
+      <iframe class="preview-frame" id="previewFrame"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProject = '';
+let isStreaming = false;
+let ws = null;
+
+function setInput(text) {
+  document.getElementById('userInput').value = text;
+  document.getElementById('userInput').focus();
+}
+
+function handleKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const ta = e.target;
+  ta.rows = Math.min(6, Math.max(1, ta.value.split('\n').length));
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderMarkdown(text) {
+  if (!text) return '';
+  let raw = escapeHtml(text);
+  // Inline code
+  raw = raw.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>');
+  // Bold
+  raw = raw.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  raw = raw.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Headers
+  raw = raw.replace(/^### (.+)$/gm, '<h3 class="md-h3">$1</h3>');
+  raw = raw.replace(/^## (.+)$/gm, '<h2 class="md-h2">$1</h2>');
+  raw = raw.replace(/^# (.+)$/gm, '<h1 class="md-h1">$1</h1>');
+  // Blockquote
+  raw = raw.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>');
+  // Code blocks
+  raw = raw.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="md-pre"><code>$2</code></pre>');
+  // Lists
+  raw = raw.replace(/^[-*] (.+)$/gm, '<li class="md-li">$1</li>');
+  raw = raw.replace(/(<li class="md-li">.+<\/li>\n?)+/g, '<ul class="md-ul">$&</ul>');
+  // HR
+  raw = raw.replace(/^(---|___|\*\*\*)$/gm, '<hr class="md-hr">');
+  // Paragraphs
+  const blocks = raw.split('\n\n').map(p => p.trim() ? `<p class="md-p">${p.replace(/\n/g, '<br>')}</p>` : '').join('\n');
+  return blocks;
+}
+
+function appendMessage(role, text, raw) {
+  const inner = document.getElementById('chatInner');
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const avatar = role === 'user' ? '👤' : '⚡';
+  const content = raw ? text : (role === 'assistant' ? renderMarkdown(text) : escapeHtml(text));
+  div.innerHTML = `<div class="message-avatar">${avatar}</div><div class="message-content">${content}</div>`;
+  inner.appendChild(div);
+  scrollToBottom();
+  return div.querySelector('.message-content');
+}
+
+function appendTyping() {
+  const inner = document.getElementById('chatInner');
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.style.display = 'none';
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.id = 'typing-indicator';
+  div.innerHTML = '<div class="message-avatar">⚡</div><div class="message-content"><div class="typing"><span></span><span></span><span></span></div></div>';
+  inner.appendChild(div);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function scrollToBottom() {
+  const area = document.getElementById('chatMessages');
+  area.scrollTop = area.scrollHeight;
+}
+
+function showStatus(show, text, stage) {
+  const bar = document.getElementById('statusBar');
+  bar.style.display = show ? 'flex' : 'none';
+  if (text) document.getElementById('statusText').textContent = text;
+  if (stage) document.getElementById('statusStage').textContent = stage;
+}
+
+function togglePreview() {
+  document.getElementById('previewPanel').classList.toggle('show');
+}
+
+function openPreview() {
+  document.getElementById('previewPanel').classList.add('show');
+}
+
+async function updatePreview(pid) {
+  try {
+    const res = await fetch(`/api/projects/${pid}/file?path=index.html`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const frame = document.getElementById('previewFrame');
+    if (data.content && frame) frame.srcdoc = data.content;
+  } catch (e) {}
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+
+  input.value = '';
+  input.rows = 1;
+  isStreaming = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  appendMessage('user', text);
+  appendTyping();
+
+  try {
+    // 1. 创建/获取项目
+    const chatRes = await fetch('/api/chat', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, project_id: currentProject})
+    });
+    const chatData = await chatRes.json();
+    if (chatData.error) { appendMessage('assistant', '❌ ' + chatData.error); return; }
+    currentProject = chatData.project_id;
+    document.getElementById('projectName').textContent = chatData.text.slice(0, 20);
+
+    removeTyping();
+
+    // 2. SSE流式生成PRD
+    const prdMsgDiv = appendMessage('assistant', '📝 正在生成产品需求文档...');
+    const prdContentDiv = document.createElement('div');
+    prdContentDiv.style.cssText = 'margin-top:8px;padding:12px;background:var(--bg-code);border-radius:8px;border:1px solid var(--border-light);font-size:13px;line-height:1.7;max-height:360px;overflow-y:auto;';
+    prdMsgDiv.appendChild(prdContentDiv);
+
+    let prdText = '';
+    const es = new EventSource(`/api/stream?project_id=${encodeURIComponent(currentProject)}&requirement=${encodeURIComponent(text)}`);
+
+    es.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === 'chunk') {
+          prdText += d.content;
+          prdContentDiv.innerHTML = renderMarkdown(prdText);
+          prdContentDiv.scrollTop = prdContentDiv.scrollHeight;
+          scrollToBottom();
+        } else if (d.type === 'done') {
+          es.close();
+          isStreaming = false;
+          document.getElementById('sendBtn').disabled = false;
+          // 连接WebSocket获取Pipeline进度
+          connectWebSocket(currentProject);
+        } else if (d.type === 'error') {
+          es.close();
+          isStreaming = false;
+          document.getElementById('sendBtn').disabled = false;
+          prdContentDiv.innerHTML += `<div style="color:var(--danger);margin-top:8px;">❌ ${escapeHtml(d.content)}</div>`;
+        }
+      } catch (err) {}
+    };
+    es.onerror = () => {
+      if (isStreaming) {
+        isStreaming = false;
+        document.getElementById('sendBtn').disabled = false;
+      }
+      es.close();
+    };
+  } catch (err) {
+    removeTyping();
+    appendMessage('assistant', '❌ 请求失败: ' + err.message);
+    isStreaming = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+function connectWebSocket(pid) {
+  if (ws) { ws.close(); }
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws/${pid}`);
+  let previewInterval = null;
+
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      showStatus(true, 'AI执行中...', data.stage + ': ' + data.message.slice(0, 40));
+
+      // 代码生成阶段打开预览
+      if (data.stage === '代码生成' || data.stage === '部署执行' || data.stage === '已完成') {
+        openPreview();
+        if (!previewInterval) previewInterval = setInterval(() => updatePreview(pid), 3000);
+      }
+      if (data.stage === '已完成') {
+        showStatus(true, '✅ 部署完成', '项目已就绪');
+        if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+        updatePreview(pid);
+      }
+      if (data.stage === '错误' || data.stage === '已停止') {
+        showStatus(false);
+        if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+      }
+    } catch (err) {}
+  };
+
+  ws.onclose = () => {
+    if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
+  };
+}
+
+function newChat() {
+  currentProject = '';
+  document.getElementById('chatInner').innerHTML = `
+    <div class="welcome" id="welcome">
+      <h1>WinGo V4</h1>
+      <p>描述你的需求，AI 自动完成开发部署</p>
+      <div class="welcome-chips">
+        <div class="welcome-chip" onclick="setInput('做一个餐饮利润分析后台')">餐饮利润分析后台</div>
+        <div class="welcome-chip" onclick="setInput('生成一个会员管理系统')">会员管理系统</div>
+        <div class="welcome-chip" onclick="setInput('写一个公司官网')">公司官网</div>
+        <div class="welcome-chip" onclick="setInput('做一个待办事项应用')">待办事项应用</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('projectName').textContent = '';
+  document.getElementById('previewPanel').classList.remove('show');
+  document.getElementById('previewFrame').srcdoc = '';
+  showStatus(false);
+  if (ws) { ws.close(); ws = null; }
+}
+</script>
+</body>
+</html>
