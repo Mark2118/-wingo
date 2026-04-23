@@ -280,19 +280,16 @@ async def run_pipeline(project_id: str, input_text: str, on_log):
         return False
     update_project(project_id, stage="部署执行", test_result=json.dumps(test_result))
 
-    # ── Stage 4.5: 生成 requirements.txt & Dockerfile ──
+    # ── Stage 4.5: 生成 requirements.txt ──
     if project_type == "Python":
         await on_log("部署执行", "正在生成依赖配置...")
         _generate_requirements(project_id)
-        _generate_dockerfile(project_id, project_type)
-    elif project_type == "HTML":
-        _generate_dockerfile(project_id, project_type)
 
     # ── Stage 5: 部署 ──
     await on_log("部署执行", "正在部署...")
     t0 = time.time()
     try:
-        from core.local_deployer import sync_project, build_and_run, get_deploy_info
+        from core.local_deployer import sync_project, start_and_run, get_deploy_info
         deploy_info = get_deploy_info(project_id)
         port = deploy_info["port"]
         project_path = os.path.join(PROJECTS_DIR, project_id)
@@ -303,8 +300,8 @@ async def run_pipeline(project_id: str, input_text: str, on_log):
             raise RuntimeError(f"同步失败: {sync_result.get('error', 'unknown')}")
         await on_log("部署执行", f"同步完成 ({sync_result.get('mode', '?')})")
 
-        await on_log("部署执行", f"Docker 构建并运行...")
-        deploy_result = build_and_run(project_id, port)
+        await on_log("部署执行", f"子进程启动 (零 Docker)...")
+        deploy_result = start_and_run(project_id, port)
         record_stage_timing("部署执行", int((time.time() - t0) * 1000), project_type)
         await on_log("部署执行", str(deploy_result.get("note", "")))
         if deploy_result.get("stdout"):
@@ -463,12 +460,12 @@ def _generate_readme(project_id: str, input_text: str, project_type: str, files:
 """
     if project_type == "HTML":
         readme += """1. 打开 `index.html` 即可使用
-2. 或使用 Docker 运行：`docker run -p 8080:80 镜像名`
+2. 或本地预览：`python3 -m http.server 8080`
 """
     else:
         readme += """1. 安装依赖：`pip install -r requirements.txt`
 2. 运行：`python main.py`
-3. 或使用 Docker 运行：`docker run -p 8080:8080 镜像名`
+3. 或：`python3 -m uvicorn main:app --host 0.0.0.0 --port 8080`
 """
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(readme)
@@ -570,23 +567,3 @@ def _generate_requirements(project_id: str):
             f.write(f"{pkg}\n")
 
 
-def _generate_dockerfile(project_id: str, project_type: str = "Python"):
-    """自动生成 Dockerfile"""
-    project_path = os.path.join(PROJECTS_DIR, project_id)
-    if project_type == "HTML":
-        content = """FROM nginx:alpine
-COPY . /usr/share/nginx/html
-EXPOSE 80
-"""
-    else:
-        content = """FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 80
-CMD ["python", "main.py"]
-"""
-    dockerfile_path = os.path.join(project_path, "Dockerfile")
-    with open(dockerfile_path, "w", encoding="utf-8") as f:
-        f.write(content)
