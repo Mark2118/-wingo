@@ -96,10 +96,17 @@ async def stream_prd(
                         except:
                             pass
 
-            # Save PRD
-            p.prd = prd_text
-            p.status = "prd_ready"
-            db.commit()
+            # Save PRD to project
+            from app.database import SessionLocal
+            db2 = SessionLocal()
+            try:
+                p2 = db2.query(Project).filter(Project.id == project_id).first()
+                if p2:
+                    p2.prd = prd_text
+                    p2.status = "prd_ready"
+                    db2.commit()
+            finally:
+                db2.close()
 
             chat = Chat(project_id=project_id, role="assistant", content=f"📋 PRD已生成\n\n{prd_text[:500]}...")
             db.add(chat)
