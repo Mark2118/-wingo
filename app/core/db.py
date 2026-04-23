@@ -1,330 +1,180 @@
 # -*- coding: utf-8 -*-
-import sqlite3
-import json
-import uuid
+"""适配层：让老系统的 core.db 接口在新系统（SQLAlchemy/PostgreSQL）上工作"""
+from sqlalchemy.orm import Session
+from app.database import SessionLocal
+from app.models.schemas import Project, Chat, Order, Subscription, Team, User
 from datetime import datetime
-from core.config import PROJECT_ROOT
-
-DB_PATH = f"{PROJECT_ROOT}/wingo_ai.db"
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """兼容旧接口，返回一个可执行的会话"""
+    return SessionLocal()
 
 
-def init_db():
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS projects (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT,
-            status TEXT DEFAULT 'created',
-            stage TEXT DEFAULT '需求分析',
-            files TEXT DEFAULT '[]',
-            project_type TEXT DEFAULT 'Python',
-            prd TEXT,
-            test_result TEXT,
-            deploy_result TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-    ''')
-    # 迁移：旧表可能没有prd字段，自动添加
-    try:
-        cur.execute("ALTER TABLE projects ADD COLUMN prd TEXT")
-    except sqlite3.OperationalError:
-        pass  # 已存在
-    # 迁移：添加 deploy_url 字段
-    try:
-        cur.execute("ALTER TABLE projects ADD COLUMN deploy_url TEXT")
-    except sqlite3.OperationalError:
-        pass
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS chats (
-            id TEXT PRIMARY KEY,
-            project_id TEXT,
-            role TEXT,
-            content TEXT,
-            created_at TEXT
-        )
-    ''')
-    # 阶段耗时统计表（用于ETA估算）
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS stage_timing (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            stage TEXT NOT NULL,
-            project_type TEXT,
-            elapsed_ms INTEGER NOT NULL,
-            created_at TEXT
-        )
-    ''')
-    # PRD资源库表
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS prd_templates (
-            id TEXT PRIMARY KEY,
-            category TEXT NOT NULL,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            tags TEXT DEFAULT '[]',
-            usage_count INTEGER DEFAULT 0,
-            is_seed INTEGER DEFAULT 0,
-            created_at TEXT,
-            updated_at TEXT
-        )
-    ''')
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS prd_history (
-            id TEXT PRIMARY KEY,
-            project_id TEXT,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            category TEXT,
-            status TEXT DEFAULT 'draft',
-            deploy_url TEXT,
-            capability_combo TEXT,
-            created_at TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+def _row_to_dict(project: Project) -> dict:
+    if not project:
+        return None
+    return {
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "status": project.status,
+        "stage": project.stage or "",
+        "files": "[]",
+        "project_type": "Python",
+        "prd": project.prd or "",
+        "test_result": "",
+        "deploy_result": "",
+        "deploy_url": project.deploy_url or "",
+        "created_at": project.created_at.isoformat() if project.created_at else "",
+        "updated_at": project.updated_at.isoformat() if project.updated_at else "",
+    }
 
 
-def create_project(name: str, description: str = "") -> dict:
-    pid = str(uuid.uuid4())[:8]
-    now = datetime.now().isoformat()
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO projects (id, name, description, status, stage, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (pid, name, description, "created", "需求分析", now, now)
-    )
-    conn.commit()
-    conn.close()
-    return {"id": pid, "name": name, "status": "created"}
-
+# ── 项目操作（映射到新系统 Project 表）──
 
 def get_project(pid: str) -> dict:
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM projects WHERE id = ?", (pid,))
-    row = cur.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return dict(row)
-
-
-def list_projects() -> list:
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM projects ORDER BY created_at DESC")
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    db: Session = SessionLocal()
+    try:
+        p = db.query(Project).filter(Project.id == pid).first()
+        return _row_to_dict(p)
+    finally:
+        db.close()
 
 
 def update_project(pid: str, **kwargs) -> bool:
-    conn = get_conn()
-    cur = conn.cursor()
-    fields = []
-    values = []
-    for k, v in kwargs.items():
-        fields.append(f"{k} = ?")
-        values.append(v)
-    fields.append("updated_at = ?")
-    values.append(datetime.now().isoformat())
-    values.append(pid)
-    cur.execute(f"UPDATE projects SET {', '.join(fields)} WHERE id = ?", values)
-    conn.commit()
-    conn.close()
-    return True
+    db: Session = SessionLocal()
+    try:
+        p = db.query(Project).filter(Project.id == pid).first()
+        if not p:
+            return False
+        for k, v in kwargs.items():
+            if hasattr(p, k):
+                setattr(p, k, v)
+        p.updated_at = datetime.now()
+        db.commit()
+        return True
+    finally:
+        db.close()
 
 
-def save_chat(project_id: str, role: str, content: str):
-    cid = str(uuid.uuid4())[:12]
-    now = datetime.now().isoformat()
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO chats (id, project_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
-        (cid, project_id, role, content, now)
-    )
-    conn.commit()
-    conn.close()
+def create_project(name: str, description: str = "") -> dict:
+    import uuid
+    db: Session = SessionLocal()
+    try:
+        pid = str(uuid.uuid4())
+        p = Project(id=pid, name=name, description=description, status="created", stage="需求分析")
+        db.add(p)
+        db.commit()
+        db.refresh(p)
+        return _row_to_dict(p)
+    finally:
+        db.close()
 
 
-def get_chats(project_id: str) -> list:
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM chats WHERE project_id = ? ORDER BY created_at ASC", (project_id,))
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+def list_projects() -> list:
+    db: Session = SessionLocal()
+    try:
+        rows = db.query(Project).order_by(Project.created_at.desc()).all()
+        return [_row_to_dict(r) for r in rows]
+    finally:
+        db.close()
 
 
 def delete_project(pid: str) -> bool:
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM chats WHERE project_id = ?", (pid,))
-    cur.execute("DELETE FROM projects WHERE id = ?", (pid,))
-    conn.commit()
-    deleted = cur.rowcount > 0
-    conn.close()
-    return deleted
+    db: Session = SessionLocal()
+    try:
+        p = db.query(Project).filter(Project.id == pid).first()
+        if not p:
+            return False
+        db.query(Chat).filter(Chat.project_id == pid).delete()
+        db.delete(p)
+        db.commit()
+        return True
+    finally:
+        db.close()
 
 
-def clear_chats(project_id: str) -> bool:
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM chats WHERE project_id = ?", (project_id,))
-    conn.commit()
-    conn.close()
-    return True
+# ── 聊天记录（映射到新系统 Chat 表）──
+
+def save_chat(project_id: str, role: str, content: str):
+    db: Session = SessionLocal()
+    try:
+        c = Chat(project_id=project_id, role=role, content=content)
+        db.add(c)
+        db.commit()
+    finally:
+        db.close()
 
 
-# ── 阶段耗时统计（ETA 估算） ──
+def get_chats(project_id: str) -> list:
+    db: Session = SessionLocal()
+    try:
+        rows = db.query(Chat).filter(Chat.project_id == project_id).order_by(Chat.created_at.asc()).all()
+        return [{"id": str(r.id), "project_id": r.project_id, "role": r.role, "content": r.content, "created_at": r.created_at.isoformat() if r.created_at else ""} for r in rows]
+    finally:
+        db.close()
+
+
+# ── 阶段耗时统计（映射到新系统，暂用内存/简单实现）──
+# 新系统 schema 里没有 stage_timing 表，先用 projects 表的 stage 字段兼容
+
 def record_stage_timing(stage: str, elapsed_ms: int, project_type: str = ""):
-    """记录某个阶段的实际耗时"""
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO stage_timing (stage, project_type, elapsed_ms, created_at) VALUES (?, ?, ?, ?)",
-        (stage, project_type, elapsed_ms, datetime.now().isoformat())
-    )
-    conn.commit()
-    conn.close()
+    """兼容接口：新系统暂无独立 stage_timing 表，暂空实现"""
+    pass
 
 
 def get_stage_eta(stage: str, project_type: str = "", limit: int = 10) -> int:
-    """查询某阶段的历史平均耗时（毫秒），返回0表示无数据"""
-    conn = get_conn()
-    cur = conn.cursor()
-    # 优先匹配同类型项目，fallback到全部
-    cur.execute(
-        "SELECT AVG(elapsed_ms) FROM stage_timing WHERE stage = ? AND project_type = ? ORDER BY created_at DESC LIMIT ?",
-        (stage, project_type, limit)
-    )
-    row = cur.fetchone()
-    avg = row[0] if row and row[0] else None
-    if avg is None:
-        # fallback: 不区分项目类型
-        cur.execute(
-            "SELECT AVG(elapsed_ms) FROM stage_timing WHERE stage = ? ORDER BY created_at DESC LIMIT ?",
-            (stage, limit)
-        )
-        row = cur.fetchone()
-        avg = row[0] if row and row[0] else 0
-    conn.close()
-    return int(avg)
+    """兼容接口：返回 0 表示无历史数据"""
+    return 0
 
 
-# ── PRD 资源库操作 ──
+# ── PRD 历史（兼容接口，暂空实现）──
+# 新系统 schema 里没有 prd_history / prd_templates 表
+
+def save_prd_history(project_id: str, title: str, content: str, category: str = None, deploy_url: str = None, capability_combo: str = None, status: str = 'draft') -> str:
+    """兼容接口：把 PRD 保存到项目表的 prd 字段"""
+    db: Session = SessionLocal()
+    try:
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if p:
+            p.prd = content
+            db.commit()
+        return project_id
+    finally:
+        db.close()
+
+
+def list_prd_history(category: str = None, limit: int = 50) -> list:
+    return []
+
+
+def get_prd_history(hid: str) -> dict:
+    return None
+
 
 def save_prd_template(category: str, title: str, content: str, tags: list = None, is_seed: int = 0) -> str:
-    """保存PRD模板到库"""
-    tid = str(uuid.uuid4())[:8]
-    now = datetime.now().isoformat()
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO prd_templates (id, category, title, content, tags, is_seed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (tid, category, title, content, json.dumps(tags or []), is_seed, now, now)
-    )
-    conn.commit()
-    conn.close()
-    return tid
+    return ""
 
 
 def list_prd_templates(category: str = None) -> list:
-    """列出PRD模板，可按行业筛选"""
-    conn = get_conn()
-    cur = conn.cursor()
-    if category:
-        cur.execute("SELECT * FROM prd_templates WHERE category = ? ORDER BY usage_count DESC, created_at DESC", (category,))
-    else:
-        cur.execute("SELECT * FROM prd_templates ORDER BY usage_count DESC, created_at DESC")
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return []
 
 
 def get_prd_template(tid: str) -> dict:
-    """获取单个PRD模板详情"""
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM prd_templates WHERE id = ?", (tid,))
-    row = cur.fetchone()
-    conn.close()
-    if row:
-        return dict(row)
     return None
 
 
 def increment_template_usage(tid: str):
-    """增加模板使用次数"""
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("UPDATE prd_templates SET usage_count = usage_count + 1 WHERE id = ?", (tid,))
-    conn.commit()
-    conn.close()
+    pass
 
 
 def search_prd_templates(keyword: str) -> list:
-    """搜索PRD模板"""
-    conn = get_conn()
-    cur = conn.cursor()
-    like = f"%{keyword}%"
-    cur.execute(
-        "SELECT * FROM prd_templates WHERE title LIKE ? OR content LIKE ? OR tags LIKE ? ORDER BY usage_count DESC",
-        (like, like, like)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return []
 
 
-def save_prd_history(project_id: str, title: str, content: str, category: str = None, deploy_url: str = None, capability_combo: str = None, status: str = 'draft') -> str:
-    """保存PRD历史记录"""
-    hid = str(uuid.uuid4())[:8]
-    now = datetime.now().isoformat()
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO prd_history (id, project_id, title, content, category, deploy_url, capability_combo, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (hid, project_id, title, content, category, deploy_url, capability_combo, status, now)
-    )
-    conn.commit()
-    conn.close()
-    return hid
+# ── 兼容旧 init_db ──
 
-
-def list_prd_history(category: str = None, limit: int = 50) -> list:
-    """列出PRD历史记录"""
-    conn = get_conn()
-    cur = conn.cursor()
-    if category:
-        cur.execute(
-            "SELECT * FROM prd_history WHERE category = ? ORDER BY created_at DESC LIMIT ?",
-            (category, limit)
-        )
-    else:
-        cur.execute("SELECT * FROM prd_history ORDER BY created_at DESC LIMIT ?", (limit,))
-    rows = cur.fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-def get_prd_history(hid: str) -> dict:
-    """获取单个PRD历史记录"""
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM prd_history WHERE id = ?", (hid,))
-    row = cur.fetchone()
-    conn.close()
-    if row:
-        return dict(row)
-    return None
+def init_db():
+    """兼容接口：新系统的数据库由 app.database.init_database() 初始化"""
+    pass
