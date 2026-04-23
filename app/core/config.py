@@ -125,7 +125,8 @@ DANGEROUS_COMMANDS = [
 
 # --- WinGo AI Commander 兼容配置 ---
 import os
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 新系统根目录（core/config.py 位于 app/core/，向上两级到项目根目录）
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROJECTS_DIR = os.path.join(PROJECT_ROOT, 'projects')
 os.makedirs(PROJECTS_DIR, exist_ok=True)
 
