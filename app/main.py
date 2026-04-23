@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import init_database
@@ -42,13 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-async def root():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
-
+# API routes first
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(billing_router)
@@ -56,3 +51,29 @@ app.include_router(projects_router)
 app.include_router(chat_router)
 app.include_router(preview_router)
 app.include_router(ws_router)
+
+# Static HTML pages
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+
+@app.get("/")
+async def root():
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+@app.get("/landing.html")
+async def landing():
+    return FileResponse(os.path.join(STATIC_DIR, "landing.html"))
+
+@app.get("/login.html")
+async def login_page():
+    return FileResponse(os.path.join(STATIC_DIR, "login.html"))
+
+@app.get("/register.html")
+async def register_page():
+    return FileResponse(os.path.join(STATIC_DIR, "register.html"))
+
+@app.get("/pricing.html")
+async def pricing_page():
+    return FileResponse(os.path.join(STATIC_DIR, "pricing.html"))
+
+# Static assets
+app.mount("/static", StaticFiles(directory="static"), name="static")
