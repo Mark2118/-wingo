@@ -180,8 +180,10 @@ body {
       <span class="project-name" id="projectName"></span>
     </div>
     <div class="header-right">
+      <span id="userInfo" style="font-size:12px;color:var(--text-secondary);margin-right:8px;"></span>
       <button class="btn" onclick="togglePreview()" id="previewBtn">👁 预览</button>
       <button class="btn" onclick="newChat()">🗑 新建</button>
+      <button class="btn" onclick="logout()">退出</button>
     </div>
   </div>
 
@@ -229,6 +231,34 @@ body {
 let currentProject = '';
 let isStreaming = false;
 let ws = null;
+
+// --- Auth ---
+const TOKEN_KEY = 'wingo_token';
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function authHeaders() {
+  const t = getToken();
+  return t ? {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json'} : {'Content-Type': 'application/json'};
+}
+async function checkAuth() {
+  const token = getToken();
+  if (!token) { location.href = '/login.html'; return; }
+  try {
+    const res = await fetch('/api/auth/me', {headers: {'Authorization': 'Bearer ' + token}});
+    if (!res.ok) { localStorage.removeItem(TOKEN_KEY); location.href = '/login.html'; return; }
+    const data = await res.json();
+    const user = data.user;
+    const team = data.team;
+    const info = document.getElementById('userInfo');
+    if (info && user) info.textContent = (team ? team.name + ' · ' : '') + user.name;
+  } catch (e) {
+    localStorage.removeItem(TOKEN_KEY); location.href = '/login.html';
+  }
+}
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  location.href = '/login.html';
+}
+checkAuth();
 
 function setInput(text) {
   document.getElementById('userInput').value = text;
@@ -327,7 +357,7 @@ function openPreview() {
 
 async function updatePreview(pid) {
   try {
-    const res = await fetch(`/api/projects/${pid}/file?path=index.html`);
+    const res = await fetch(`/api/projects/${pid}/file?path=index.html`, {headers: authHeaders()});
     if (!res.ok) return;
     const data = await res.json();
     const frame = document.getElementById('previewFrame');
@@ -351,7 +381,7 @@ async function sendMessage() {
   try {
     // 1. 创建/获取项目
     const chatRes = await fetch('/api/chat', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+      method: 'POST', headers: authHeaders(),
       body: JSON.stringify({text, project_id: currentProject})
     });
     const chatData = await chatRes.json();
@@ -368,7 +398,7 @@ async function sendMessage() {
     prdMsgDiv.appendChild(prdContentDiv);
 
     let prdText = '';
-    const es = new EventSource(`/api/stream?project_id=${encodeURIComponent(currentProject)}&requirement=${encodeURIComponent(text)}`);
+    const es = new EventSource(`/api/stream?project_id=${encodeURIComponent(currentProject)}&requirement=${encodeURIComponent(text)}&token=${encodeURIComponent(getToken() || '')}`);
 
     es.onmessage = (e) => {
       try {

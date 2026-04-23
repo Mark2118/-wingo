@@ -27,13 +27,25 @@ class Settings(BaseSettings):
     app_name: str = "WinGo"
     app_version: str = "4.0.0"
     host: str = "0.0.0.0"
-    port: int = 38888
+    port: int = 38889
     debug: bool = False
 
     project_root: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     projects_dir: str = Field(default="")
     memory_dir: str = Field(default="")
     logs_dir: str = Field(default="")
+
+    # PostgreSQL
+    db_host: str = Field(default="127.0.0.1", alias="DB_HOST")
+    db_port: int = Field(default=5434, alias="DB_PORT")
+    db_name: str = Field(default="wingo", alias="DB_NAME")
+    db_user: str = Field(default="wingo", alias="DB_USER")
+    db_password: str = Field(default="wingo", alias="DB_PASSWORD")
+
+    # JWT
+    jwt_secret: str = Field(default="wingo-enterprise-jwt-secret-key-2026", alias="JWT_SECRET")
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 24
 
     ai: AISettings = Field(default_factory=AISettings)
 
@@ -48,6 +60,10 @@ class Settings(BaseSettings):
         os.makedirs(self.projects_dir, exist_ok=True)
         os.makedirs(self.memory_dir, exist_ok=True)
         os.makedirs(self.logs_dir, exist_ok=True)
+
+    @property
+    def database_url(self) -> str:
+        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
 
 settings = Settings()

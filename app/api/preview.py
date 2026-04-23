@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse
+from sqlalchemy.orm import Session
 from app.config import settings
-from core.db import get_project
+from app.database import get_db
+from app.api.auth import get_current_user
+from app.models.schemas import Project
 
 router = APIRouter(tags=["preview"])
 
 
 @router.post("/api/projects/{project_id}/preview")
-def api_start_preview(project_id: str):
-    p = get_project(project_id)
+def api_start_preview(project_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    p = db.query(Project).filter(Project.id == project_id, Project.team_id == user.team_id).first()
     if not p:
         return {"error": "项目不存在"}
     return {"url": f"/preview/{project_id}/"}

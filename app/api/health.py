@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from fastapi import APIRouter
-import httpx
-import psutil
+from sqlalchemy import text
 from datetime import datetime, timezone
+from app.database import engine
+import psutil
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -10,19 +11,14 @@ router = APIRouter(prefix="/api/health", tags=["health"])
 @router.get("")
 async def health_check():
     services = {"wingo": "online"}
-    try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            r = await client.get("http://127.0.0.1:5678/healthz")
-            services["n8n"] = "online" if r.status_code < 400 else "offline"
-    except:
-        services["n8n"] = "offline"
 
+    # PostgreSQL
     try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            r = await client.get("http://127.0.0.1:11434/api/tags")
-            services["ollama"] = "online" if r.status_code < 400 else "offline"
-    except:
-        services["ollama"] = "offline"
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            services["postgresql"] = "online"
+    except Exception:
+        services["postgresql"] = "offline"
 
     return {
         "status": "ok" if all(v == "online" for v in services.values()) else "degraded",

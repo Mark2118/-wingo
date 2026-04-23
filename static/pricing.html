@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>定价 - WinGo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  background: #0d0d0d; color: #e5e5e5;
+  min-height: 100vh;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 60px 24px; }
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; }
+.nav-logo { font-size: 20px; font-weight: 700; }
+.nav a { color: #888; text-decoration: none; font-size: 14px; }
+.nav a:hover { color: #e5e5e5; }
+h1 { text-align: center; font-size: 36px; margin-bottom: 12px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 48px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.card { background: #141414; border: 1px solid #262626; border-radius: 12px; padding: 32px; }
+.card.popular { border-color: #3b82f6; position: relative; }
+.card.popular::before { content: "推荐"; position: absolute; top: -1px; right: 20px; background: #3b82f6; color: #fff; padding: 4px 12px; font-size: 12px; border-radius: 0 0 6px 6px; }
+.plan { font-size: 14px; color: #888; margin-bottom: 8px; }
+.price { font-size: 40px; font-weight: 700; }
+.price span { font-size: 16px; color: #888; font-weight: 400; }
+.desc { color: #888; font-size: 13px; margin: 12px 0 24px; min-height: 40px; }
+ul { list-style: none; margin-bottom: 24px; }
+ul li { padding: 10px 0; border-bottom: 1px solid #1a1a1a; font-size: 14px; color: #aaa; }
+ul li::before { content: "✓"; color: #22c55e; margin-right: 10px; }
+.btn {
+  width: 100%; padding: 12px; border: 1px solid #333; border-radius: 8px;
+  background: transparent; color: #e5e5e5; font-size: 15px; cursor: pointer; text-align: center; display: block; text-decoration: none;
+}
+.btn:hover { border-color: #888; }
+.btn-primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #60a5fa; }
+.footer { text-align: center; padding: 40px 0; color: #666; font-size: 13px; margin-top: 40px; border-top: 1px solid #1a1a1a; }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-logo">⚡ WinGo</div>
+  <a href="/landing.html">返回首页</a>
+</nav>
+<div class="container">
+  <h1>选择适合您的方案</h1>
+  <p class="subtitle">面向中小企业的私有化 AI 开发平台，数据不出公司</p>
+  <div class="grid">
+    <div class="card">
+      <div class="plan">体验版</div>
+      <div class="price">¥0 <span>/ 永久</span></div>
+      <div class="desc">适合个人体验和小型项目验证</div>
+      <ul>
+        <li>1 个管理员账号</li>
+        <li>5 个项目额度</li>
+        <li>本地预览</li>
+        <li>基础 AI 模型</li>
+        <li>社区支持</li>
+      </ul>
+      <a href="/register.html" class="btn">免费试用</a>
+    </div>
+    <div class="card popular">
+      <div class="plan">团队版</div>
+      <div class="price">¥5,000 <span>/ 年</span></div>
+      <div class="desc">适合创业公司和小型团队日常使用</div>
+      <ul>
+        <li>最多 10 人团队</li>
+        <li>无限项目</li>
+        <li>本地服务器部署</li>
+        <li>优先 AI 队列</li>
+        <li>营销自动化</li>
+        <li>邮件支持</li>
+      </ul>
+      <a href="/register.html" class="btn btn-primary">立即开通</a>
+    </div>
+    <div class="card">
+      <div class="plan">企业版</div>
+      <div class="price">¥30,000 <span>/ 年</span></div>
+      <div class="desc">适合中大型企业私有化部署需求</div>
+      <ul>
+        <li>无限团队成员</li>
+        <li>无限项目</li>
+        <li>私有化集群部署</li>
+        <li>API 开放接入</li>
+        <li>自定义角色权限</li>
+        <li>专属客户经理</li>
+      </ul>
+      <a href="/register.html" class="btn">联系我们</a>
+    </div>
+  </div>
+</div>
+<footer class="footer">
+  © 2026 WinGo. 企业级 AI 私有化开发平台.
+</footer>
+</body>
+</html>

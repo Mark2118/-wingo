@@ -3,11 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.database import init_database
 
 from app.api.health import router as health_router
+from app.api.auth import router as auth_router
+from app.api.billing import router as billing_router
 from app.api.projects import router as projects_router
 from app.api.chat import router as chat_router
 from app.api.preview import router as preview_router
@@ -41,7 +44,14 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/")
+async def root():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(billing_router)
 app.include_router(projects_router)
 app.include_router(chat_router)
 app.include_router(preview_router)

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from core.db import get_project, update_project
+from sqlalchemy.orm import Session
+from app.database import SessionLocal
+from app.models.schemas import Project
 
 router = APIRouter(tags=["websocket"])
 
@@ -16,17 +18,27 @@ async def ws_pipeline(websocket: WebSocket, project_id: str):
         _ws_connections[project_id] = set()
     _ws_connections[project_id].add(websocket)
 
-    p = get_project(project_id)
-    if p:
-        await websocket.send_json(
-            {"stage": p.get("stage", "等待中"), "message": "已连接"}
-        )
+    db = SessionLocal()
+    try:
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if p:
+            await websocket.send_json({"stage": p.stage or "等待中", "message": "已连接"})
+    finally:
+        db.close()
 
     try:
         while True:
             data = await websocket.receive_text()
             if data.strip() == "STOP":
-                update_project(project_id, status="stopped", stage="已停止")
+                db = SessionLocal()
+                try:
+                    p = db.query(Project).filter(Project.id == project_id).first()
+                    if p:
+                        p.status = "stopped"
+                        p.stage = "已停止"
+                        db.commit()
+                finally:
+                    db.close()
                 task = _running_tasks.pop(project_id, None)
                 if task and not task.done():
                     task.cancel()

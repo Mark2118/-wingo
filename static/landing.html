@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WinGo - 企业级 AI 私有化开发平台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  background: #0d0d0d; color: #e5e5e5; line-height: 1.6;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+.nav-logo { font-size: 22px; font-weight: 700; }
+.nav-links { display: flex; gap: 24px; align-items: center; }
+.nav-links a { color: #888; text-decoration: none; font-size: 14px; }
+.nav-links a:hover { color: #e5e5e5; }
+.nav-btn { padding: 8px 18px; background: #3b82f6; border: none; border-radius: 6px; color: #fff; font-size: 14px; cursor: pointer; text-decoration: none; }
+.nav-btn:hover { background: #60a5fa; }
+
+/* Hero */
+.hero { text-align: center; padding: 80px 0 60px; }
+.hero h1 { font-size: 48px; font-weight: 700; margin-bottom: 16px; line-height: 1.2; }
+.hero h1 span { color: #3b82f6; }
+.hero p { font-size: 18px; color: #888; max-width: 600px; margin: 0 auto 32px; }
+.hero-btns { display: flex; gap: 16px; justify-content: center; }
+.btn-primary { padding: 14px 32px; background: #3b82f6; border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn-primary:hover { background: #60a5fa; }
+.btn-secondary { padding: 14px 32px; background: transparent; border: 1px solid #333; border-radius: 8px; color: #e5e5e5; font-size: 16px; cursor: pointer; text-decoration: none; }
+.btn-secondary:hover { border-color: #888; }
+
+/* Features */
+.features { padding: 60px 0; }
+.features h2 { text-align: center; font-size: 32px; margin-bottom: 48px; }
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.feature-card { background: #141414; border: 1px solid #262626; border-radius: 12px; padding: 28px; }
+.feature-card h3 { font-size: 18px; margin-bottom: 10px; }
+.feature-card p { color: #888; font-size: 14px; }
+
+/* Pricing */
+.pricing { padding: 60px 0; }
+.pricing h2 { text-align: center; font-size: 32px; margin-bottom: 48px; }
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.pricing-card { background: #141414; border: 1px solid #262626; border-radius: 12px; padding: 32px; text-align: center; }
+.pricing-card.popular { border-color: #3b82f6; }
+.pricing-card .plan { font-size: 14px; color: #888; margin-bottom: 8px; }
+.pricing-card .price { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+.pricing-card .period { color: #888; font-size: 13px; margin-bottom: 24px; }
+.pricing-card ul { list-style: none; text-align: left; margin-bottom: 24px; }
+.pricing-card ul li { padding: 8px 0; border-bottom: 1px solid #1a1a1a; font-size: 14px; color: #aaa; }
+.pricing-card ul li::before { content: "✓"; color: #22c55e; margin-right: 8px; }
+
+/* Footer */
+.footer { text-align: center; padding: 40px 0; color: #666; font-size: 13px; border-top: 1px solid #1a1a1a; margin-top: 40px; }
+
+@media (max-width: 768px) {
+  .feature-grid, .pricing-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+<nav class="nav container">
+  <div class="nav-logo">⚡ WinGo</div>
+  <div class="nav-links">
+    <a href="#features">功能</a>
+    <a href="#pricing">定价</a>
+    <a href="/login.html">登录</a>
+    <a href="/register.html" class="nav-btn">免费试用</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <h1>一句话生成<br><span>企业级业务系统</span></h1>
+    <p>WinGo 是面向中小企业的私有化 AI 开发平台。数据不出公司，AI 自动完成从需求分析到部署上线的全流程。</p>
+    <div class="hero-btns">
+      <a href="/register.html" class="btn-primary">免费试用</a>
+      <a href="#pricing" class="btn-secondary">查看定价</a>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <h2>为什么选择 WinGo</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>🔒 数据私有化</h3>
+        <p>系统完全部署在您的本地服务器，所有数据不出公司内网，满足金融、医疗、政府等行业的数据合规要求。</p>
+      </div>
+      <div class="feature-card">
+        <h3>⚡ 极速交付</h3>
+        <p>传统外包需要 1-3 个月，WinGo 只需几分钟。用自然语言描述需求，AI 自动生成完整可运行的业务系统。</p>
+      </div>
+      <div class="feature-card">
+        <h3>👥 团队协作</h3>
+        <p>支持多角色权限管理（管理员/开发者/访客），团队成员可共享项目、协同开发、统一管理。</p>
+      </div>
+      <div class="feature-card">
+        <h3>🤖 AI 驱动</h3>
+        <p>内置多模型 AI 引擎，自动完成 PRD 撰写、代码生成、测试验证、部署上线，全程零干预。</p>
+      </div>
+      <div class="feature-card">
+        <h3>📱 实时预览</h3>
+        <p>开发过程中实时渲染页面效果，所见即所得。不满意随时对话修改，AI 立即响应调整。</p>
+      </div>
+      <div class="feature-card">
+        <h3>💰 成本优势</h3>
+        <p>比传统外包公司便宜 70%，比自建技术团队节省 90% 成本。按需付费，无隐形消费。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="container">
+    <h2>选择适合您的方案</h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="plan">体验版</div>
+        <div class="price">¥0</div>
+        <div class="period">永久免费</div>
+        <ul>
+          <li>1 个管理员</li>
+          <li>5 个项目</li>
+          <li>本地预览</li>
+          <li>基础 AI 模型</li>
+        </ul>
+        <a href="/register.html" class="btn-secondary" style="width:100%;display:block;text-align:center;">免费试用</a>
+      </div>
+      <div class="pricing-card popular">
+        <div class="plan">团队版</div>
+        <div class="price">¥5,000</div>
+        <div class="period">/ 年</div>
+        <ul>
+          <li>最多 10 人团队</li>
+          <li>无限项目</li>
+          <li>本地服务器部署</li>
+          <li>优先 AI 队列</li>
+          <li>营销自动化</li>
+        </ul>
+        <a href="/register.html" class="btn-primary" style="width:100%;display:block;text-align:center;">立即开通</a>
+      </div>
+      <div class="pricing-card">
+        <div class="plan">企业版</div>
+        <div class="price">¥30,000</div>
+        <div class="period">/ 年</div>
+        <ul>
+          <li>无限团队成员</li>
+          <li>无限项目</li>
+          <li>私有化集群部署</li>
+          <li>API 开放接入</li>
+          <li>专属客户经理</li>
+        </ul>
+        <a href="/register.html" class="btn-secondary" style="width:100%;display:block;text-align:center;">联系我们</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    © 2026 WinGo. 企业级 AI 私有化开发平台.
+  </div>
+</footer>
+</body>
+</html>
