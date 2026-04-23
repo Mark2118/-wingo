@@ -167,7 +167,7 @@ Step 7: 付费升级（免费版触发限制时）
 | 层 | 技术 |
 |----|------|
 | 后端 | FastAPI + Python 3.11 |
-| 数据库 | SQLite（P0）/ PostgreSQL（P1） |
+| 数据库 | PostgreSQL 15（企业级主数据库） |
 | 前端 | 纯 HTML/CSS/JS（单页应用） |
 | 实时通信 | SSE（PRD流式）+ WebSocket（Pipeline进度） |
 | AI 引擎 | MiniMax / Kimi / Ollama（从 taizi 搬运） |
