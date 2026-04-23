@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import json
+import httpx
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -8,11 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.api.auth import get_current_user, decode_token
-from app.models.schemas import Project, Chat
-from core.ai_engine import stream_chat
+from app.models.schemas import Project, Chat, User
 from core.pipeline import run_pipeline
 
 router = APIRouter(prefix="/api", tags=["chat"])
+
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5-coder:7b"
 
 
 class ChatBody(BaseModel):
@@ -23,14 +26,13 @@ class ChatBody(BaseModel):
 def _get_user_from_token(token: str, db: Session):
     try:
         user_id = decode_token(token)
-        from app.models.schemas import User
         return db.query(User).filter(User.id == user_id, User.status == "active").first()
     except Exception:
         return None
 
 
 @router.post("/chat")
-async def chat_message(body: ChatBody, user=Depends(get_current_user), db: Session = Depends(get_db)):
+async def chat_message(body: ChatBody, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     pid = body.project_id
     if not pid:
         p = Project(team_id=user.team_id, user_id=user.id, name=body.text[:30], description=body.text)
@@ -50,49 +52,57 @@ async def stream_prd(
     project_id: str,
     requirement: str,
     token: str = Query(""),
-    user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # SSE does not support headers, allow token from query param
-    if token:
-        u = _get_user_from_token(token, db)
-        if u:
-            user = u
+    user = _get_user_from_token(token, db)
+    if not user:
+        return {"error": "Unauthorized"}
+
     p = db.query(Project).filter(Project.id == project_id, Project.team_id == user.team_id).first()
     if not p:
         return {"error": "项目不存在"}
 
-    messages = [
-        {
-            "role": "system",
-            "content": "你是一位资深产品经理。请根据用户需求生成结构化的PRD文档。"
-                       "包含：背景、目标、用户故事、功能需求、非功能需求、验收标准。"
-                       "用Markdown格式输出。",
-        },
-        {"role": "user", "content": f"项目ID: {project_id}\n需求: {requirement}"},
-    ]
-
     async def event_generator():
         prd_text = ""
         try:
-            async for chunk in stream_chat(messages, task_type="heavy"):
-                if chunk["type"] == "chunk":
-                    prd_text += chunk["content"]
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk['content']})}\n\n"
-                elif chunk["type"] == "done":
-                    p.prd = prd_text
-                    p.status = "prd_ready"
-                    db.commit()
+            prompt = (
+                "你是一位资深产品经理。请根据以下需求生成结构化的PRD文档。"
+                "包含：背景、目标、用户故事、功能需求、非功能需求、验收标准。\n\n"
+                f"需求：{requirement}"
+            )
+            async with httpx.AsyncClient(timeout=120) as client:
+                async with client.stream(
+                    "POST", OLLAMA_URL,
+                    json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": True}
+                ) as resp:
+                    async for line in resp.aiter_lines():
+                        if not line.strip():
+                            continue
+                        try:
+                            data = json.loads(line)
+                            chunk = data.get("response", "")
+                            if chunk:
+                                prd_text += chunk
+                                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                            if data.get("done"):
+                                break
+                        except:
+                            pass
 
-                    chat = Chat(project_id=project_id, role="assistant", content=f"📋 PRD已生成\n\n{prd_text[:500]}...")
-                    db.add(chat)
-                    db.commit()
+            # Save PRD
+            p.prd = prd_text
+            p.status = "prd_ready"
+            db.commit()
 
-                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                    asyncio.create_task(_auto_pipeline(project_id, requirement))
+            chat = Chat(project_id=project_id, role="assistant", content=f"📋 PRD已生成\n\n{prd_text[:500]}...")
+            db.add(chat)
+            db.commit()
 
-                elif chunk["type"] == "error":
-                    yield f"data: {json.dumps({'type': 'error', 'content': chunk['content']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+            # Auto launch pipeline
+            asyncio.create_task(_auto_pipeline(project_id, requirement))
+
         except Exception as exc:
             yield f"data: {json.dumps({'type': 'error', 'content': str(exc)})}\n\n"
 
