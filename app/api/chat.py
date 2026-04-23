@@ -35,6 +35,13 @@ def _get_user_from_token(token: str, db: Session):
 async def chat_message(body: ChatBody, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     pid = body.project_id
     if not pid:
+        # 免费版项目数量限制
+        from app.models.schemas import Team
+        team = db.query(Team).filter(Team.id == user.team_id).first()
+        if team and team.plan == "trial":
+            project_count = db.query(Project).filter(Project.team_id == user.team_id).count()
+            if project_count >= 3:
+                return {"error": "免费版最多创建 3 个项目，请升级套餐"}
         p = Project(team_id=user.team_id, user_id=user.id, name=body.text[:30], description=body.text)
         db.add(p)
         db.commit()
