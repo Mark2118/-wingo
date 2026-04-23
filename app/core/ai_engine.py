@@ -72,8 +72,18 @@ def _routing(text: str) -> str:
 def _provider_priority(task_type: str = "fast") -> List[str]:
     """返回 provider 尝试顺序。"""
     if task_type == "heavy":
-        # 重活：Kimi 级联（男的干重活）
-        return ["kimi_mac_daemon", "kimi_cli", "kimi_api", "minimax"]
+        # 重活：MiniMax 优先（API 稳定可靠）→ Kimi 级联兜底
+        providers = []
+        if MINIMAX.get("api_key"):
+            providers.append("minimax")
+        if KIMI.get("api_key"):
+            providers.append("kimi_api")
+        if _kimi_cli_available():
+            providers.append("kimi_cli")
+        # 本地 Ollama 兜底
+        if OLLAMA.get("base_url"):
+            providers.append("ollama")
+        return providers if providers else ["minimax"]
     if task_type == "light":
         # 轻活：PyAgent 优先（女的干轻活）→ Ollama → MiniMax 兜底
         providers = ["pyagent"]
